@@ -36,10 +36,13 @@ import com.amazonaws.services.elasticloadbalancing.model.SourceSecurityGroup
 import com.amazonaws.services.rds.model.DBInstance
 import com.amazonaws.services.rds.model.DBSecurityGroup
 import com.amazonaws.services.rds.model.DBSnapshot
+import com.amazonaws.services.simpleworkflow.model.ActivityTypeInfo
+import com.amazonaws.services.simpleworkflow.model.DomainInfo
+import com.amazonaws.services.simpleworkflow.model.WorkflowExecutionInfo
+import com.amazonaws.services.simpleworkflow.model.WorkflowTypeInfo
 import com.google.common.collect.ImmutableBiMap
 import com.google.common.collect.ImmutableSet
 import com.netflix.asgard.model.ApplicationInstance
-import com.netflix.asgard.model.ApplicationMetrics
 import com.netflix.asgard.model.HardwareProfile
 import com.netflix.asgard.model.InstanceHealth
 import com.netflix.asgard.model.InstanceTypeData
@@ -51,10 +54,16 @@ import com.netflix.asgard.push.Cluster
 import groovy.transform.Immutable
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
+import org.codehaus.jackson.annotate.JsonAutoDetect
+import org.codehaus.jackson.annotate.JsonCreator
+import org.codehaus.jackson.annotate.JsonProperty
 
+@JsonAutoDetect(getterVisibility=JsonAutoDetect.Visibility.NONE)
 @Immutable class EntityType<T> {
 
     // By convention, entity names match corresponding controller names.
+    static final EntityType<ActivityTypeInfo> activityType = create('Activity Type',
+            { "${it.activityType.name}-${it.activityType.version}" as String })
     static final EntityType<MetricAlarm> alarm = create('Metric Alarm', { it.alarmName })
     static final EntityType<AppRegistration> application = create('Application', { it.name })
     static final EntityType<ApplicationInstance> applicationInstance = create('App Instance', { it.hostName })
@@ -70,6 +79,7 @@ import java.lang.reflect.Modifier
     static final EntityType<DBSnapshot> dbSnapshot = create('Database Snapshot', { it.DBSnapshotIdentifier })
     static final EntityType<String> domain = create('SimpleDB Domain', { it }, '',
             'Show metadata about this SimpleDB domain')
+    static final EntityType<String> eurekaAddress = create('Eureka Address', { it })
     static final EntityType<FastProperty> fastProperty = create('Fast Property', { it.id }, '', '',
             { Map attrs, String objectId -> attrs.params = [name: objectId] })
     static final EntityType<HardwareProfile> hardwareProfile = create('Hardware Profile',
@@ -100,6 +110,11 @@ import java.lang.reflect.Modifier
     static final EntityType<TopicData> topic = create('Topic', { it.name })
     static final EntityType<Volume> volume = create('Volume', { it.volumeId }, 'vol-')
     static final EntityType<Vpc> vpc = create('VPC', { it.vpcId }, 'vpc-')
+    static final EntityType<WorkflowExecutionInfo> workflowExecution = create('Workflow Execution',
+            { it.execution.runId })
+    static final EntityType<WorkflowTypeInfo> workflowType = create('Workflow Type',
+            { "${it.workflowType.name}-${it.workflowType.version}" as String })
+    static final EntityType<DomainInfo> workflowDomain = create('Workflow Domain', { it.name })
 
 
     /**
@@ -140,7 +155,8 @@ import java.lang.reflect.Modifier
         allEntityTypes
     }
 
-    static EntityType fromName(String name) {
+    @JsonCreator
+    static EntityType fromName(@JsonProperty('name') String name) {
         nameToEntityType.get(name)
     }
 
@@ -168,6 +184,7 @@ import java.lang.reflect.Modifier
         keyer(entity)
     }
 
+    @JsonProperty
     String name() {
         EntityType.nameOf(this)
     }

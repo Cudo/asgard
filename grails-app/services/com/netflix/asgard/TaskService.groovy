@@ -45,8 +45,8 @@ class TaskService {
     final SimpleDbSequenceLocator sequenceLocator = new SimpleDbSequenceLocator(region: Region.defaultRegion(),
             domainName: 'CLOUD_TASK_SEQUENCE', itemName: 'task_id', attributeName: 'value')
 
-    private ConcurrentLinkedQueue<Task> running = new ConcurrentLinkedQueue<Task>()
-    private ConcurrentLinkedQueue<Task> completed = new ConcurrentLinkedQueue<Task>()
+    private Queue<Task> running = new ConcurrentLinkedQueue<Task>()
+    private Queue<Task> completed = new ConcurrentLinkedQueue<Task>()
 
     Task startTask(UserContext userContext, String name, Closure work, Link link = null) {
         Task task = newTask(userContext, name, link)
@@ -84,7 +84,10 @@ class TaskService {
         } catch (CancelledException ignored) {
             // Thrown if task is cancelled while sleeping. Not an error.
         } catch (Exception e) {
-            if (task.status != 'failed') { // Tasks can be nested. We only want to capture the failure once.
+            if (task.status != 'failed' && task.name) {
+                // Tasks can be nested. We only want to capture the failure once.
+                // Unnamed tasks should not be marked completed. They are useful when you need to reuse code based on
+                // tasks without actually using the task system (like in an AWS SWF workflow with its own task system).
                 exception(task, e)
             }
             throw e
